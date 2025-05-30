@@ -62,6 +62,7 @@ def get_encrypted_passwords():
 #Poor soul having to look at my code, I am deeply sorry
 
 def get_decrypted_passwords(encrypted_passwords: str):
+
     encrypted_passwords_as_base64 = encrypted_passwords.encode() #turn it into bytes
     decrypted_passwords_as_bytes = base64.urlsafe_b64decode(encrypted_passwords_as_base64) #de-safe it? To be able to work on it
     master_key_as_bytes = master_key.encode() #again make it into bytes
@@ -72,53 +73,82 @@ def get_decrypted_passwords(encrypted_passwords: str):
 
     decrypted_passwords_string = decrypted_passwords_string.decode() #make it text
     #FIXME breaks here if master_key is wrong
+    if not decrypted_passwords_string:
+        return
     decrypted_passwords = json.loads(decrypted_passwords_string) #turn it back into a dict
 
     return decrypted_passwords 
 
 
 def save_passwords():
-    os.makedirs(save_directory_path, exist_ok = True)
+    os.makedirs(save_directory_path, exist_ok = True) #makes file/path if not there 
     print("saves at: ", save_directory_path + save_file_name)
-    file = open(save_directory_path + save_file_name, "w")
-    encrypted_passwords = get_encrypted_passwords()
-    file.write(encrypted_passwords)
-    file.close()
+    file = open(save_directory_path + save_file_name, "w") #opens the file for writing
+    encrypted_passwords = get_encrypted_passwords() #encrypts the passwords
+    file.write(encrypted_passwords) #writes the encrypted_passwords
+    file.close() #closes file
 
-def load_passwords():
-    global passwords
-    os.makedirs(save_directory_path, exist_ok = True)
-    print("loads from: ", save_directory_path + save_file_name)
-    file = open(save_directory_path + save_file_name, "r")
-    loaded_passwords = file.read()
-    file.close()
-    passwords = get_decrypted_passwords(loaded_passwords)
-    if master_key in passwords:
-        if passwords[master_key] == master_key:
-                is_authenticated = True
-                print("authenticated")
-    
 def get_password(password_name: str):
-    if password_name in passwords:
-        return passwords[password_name]
-    return ""
+    if password_name in passwords: 
+        return passwords[password_name] #just gets the password for the given name
+    return "" #if password doesnt exist returns nothing 
 
 def print_password(password_name: str):
-    print("password_name: ", password_name)
-    print("password: ", get_password(password_name))
+    print("password_name: ", password_name) 
+    print("password: ", get_password(password_name)) #prints, what is gets, could be ""
 
-def enter_master_key(entered_master_key: str):
+def authenticate(entered_master_key: str):
+    global is_authenticated
     global master_key
-    master_key = entered_master_key
-    load_passwords()
+    global passwords
+    master_key = entered_master_key #apply key
+    if not os.path.exists(save_directory_path + save_file_name): #if there is no save file, there are no passwors, therefore this is a new one
+        is_authenticated = True #allow the key as the key chosen by the user
+        return
+    print("loads from: ", save_directory_path + save_file_name) 
+    file = open(save_directory_path + save_file_name, "r") #open file with read access
+    loaded_passwords = file.read() #get encrypted passwords from file
+    file.close() #close file
+    if not loaded_passwords: #if there are no passwords in the file they must have been deleted
+        is_authenticated = True #therefore it is fine if we authenticate them
+        return
+    decrypted_passwords = get_decrypted_passwords(loaded_passwords) #decrypt passwords
+    if decrypted_passwords: #if they are not empty
+        passwords = decrypted_passwords #set the passwords
+    else: #if passwords are a dict, but empty
+        is_authenticated = True #no passwords therefore doable
+        return
+    if master_key in passwords:
+        if passwords[master_key] == master_key: #look for the master key in the passwords
+                is_authenticated = True #if it is there accept teh user
 
 def cli_entry_point(): #just the basic test function for now
     #TODO think of more useful help messages
-    print("Welcome to PV")
 
-    parser = argparse.ArgumentParser()
+    parser = argparse.ArgumentParser() #argparse setup
     subparsers = parser.add_subparsers(dest = "command")
 
+    parser_master_key = subparsers.add_parser("authenticate", help = "Enter the master_key for authentification") #the authentication command
+    parser_master_key.add_argument("master_key", help = "The master_key you chose")
+
+    args = parser.parse_args()
+
+    if args.command == "authenticate": #the authentication command has been called
+        authenticate(args.master_key) #do authentication
+    else:
+        print("Please authenticate using   pv authenticate   ")
+        return #ask for authentication
+    if not is_authenticated:
+        print("wrong master_key, or maybe I made a mistake")
+        return #it has been wrong
+    
+    add_password(master_key, master_key) #add the master key password used for authentication (look above)
+    
+    print("Successfully authenticated!")
+    print("Welcome to PV")
+
+
+    #add all the commands
     parser_add_password = subparsers.add_parser("add", help = "Add a new password")
     parser_add_password.add_argument("password_name", help = "The name of the password")
     parser_add_password.add_argument("password", help = "The passworditself")
@@ -135,22 +165,23 @@ def cli_entry_point(): #just the basic test function for now
     parser_get_password = subparsers.add_parser("password", help = "get a password")
     parser_get_password.add_argument("password_name", help = "The name of the password")
 
-    parser_master_key = subparsers.add_parser("master_key", help = "Enter the master_key for authentification")
-    parser_master_key.add_argument("master_key", help = "The master_key you chose")
 
-    while True:
+
+    while True: #just loop
         try:
-            line = input("PV>\t")
+            line = input("PV>\t") 
         except EOFError:
-            break
+            break 
         if not line.strip():
             continue
         if line.strip() in ("exit", "quit"):
-            print("Exiting PV")
+            print("Exiting PV") 
+            save_passwords() #when exiting, save (only time they are being saved as of now)
             break
         
         try:
-            args = parser.parse_args(line.split())
+            args = parser.parse_args(line.split()) #get the arguments
+            #the commands themselves
             if args.command == "add":
                  add_password(args.password_name, args.password)
             elif args.command == "remove":
@@ -161,20 +192,8 @@ def cli_entry_point(): #just the basic test function for now
                 print_password_names()
             elif args.command == "password":
                 print_password(args.password_name)
-            elif args.command == "master_key":
-                enter_master_key(args.master_key)
             else:
-                parser.print_help()
+                parser.print_help() #print help, in case they have no idea what they are doing (like me)
         except SystemExit:
             continue
-
-    
-
-
-  #  args = parser.parse_args()
-    
-
-    
-    
-    save_passwords()
 
