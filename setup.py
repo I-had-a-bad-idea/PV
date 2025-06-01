@@ -11,6 +11,6 @@ setup(
         "console_scripts": ["pv= pv.project:cli_entry_point"],
     },
     install_requires=[
-        "requests",
+        "json", "base64", "os", "encode", "Timer"
     ],
 )
