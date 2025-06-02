@@ -1,10 +1,14 @@
 
 import argparse
 import json
-import base64
 import os
 from idna import encode
+import base64
 from threading import Timer
+from cryptography.hazmat.primitives.ciphers.aead import AESGCM
+from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
+from cryptography.hazmat.backends import default_backend
+
 
 passwords : dict = {} #Just a dictionary, where the passwords are saved
 
@@ -18,6 +22,8 @@ configs : dict = {
     "save_directory_path": "C:\\ProgramData\\PV\\",  #The directory for the password file
     "save_file_name": "PV_passwords",  #The name of the password file
     "timeout_time": 600,  #The time in seconds until the programm automatically stops
+    "nonce": None,
+    "salt": None,
 }
 
 configs_save_path : str = "C:\\ProgramData\\PV\\"  #not inside configs, as it should not change (otherwise we wont find it)
@@ -45,18 +51,35 @@ def print_password_names():
     for password_name in passwords:
         print(password_name)
 
+
+def derive_key() -> bytes:
+    if not configs["salt"]:
+        configs["salt"] = os.urandom(16)
+
+    kdf = Scrypt(
+        salt = configs["salt"],
+        length = 32,  # 32 bytes = 256 bits
+        n = 2 ** 14,
+        r = 8,
+        p = 1,
+        backend = default_backend()
+    )
+    return kdf.derive(master_key.encode())
+
 def get_encrypted_passwords():
     passwords_string = json.dumps(passwords) #turn the dict into a str
     passwords_string_as_bytes = passwords_string.encode() #turn the str into bytes
-    master_key_as_bytes = master_key.encode() #same with master key
+    master_key_as_bytes = derive_key()
 
-    encrypted_passwords = bytes(
-        passwords_string_as_bytes ^ master_key_as_bytes[i % len(master_key_as_bytes)]
-        for i, passwords_string_as_bytes in enumerate(passwords_string_as_bytes) # XOR encryption (funny shit, I dont understand)
-    )
-    encrypted_passwords_as_base64 = base64.urlsafe_b64encode(encrypted_passwords)
+    aesgcm = AESGCM(master_key_as_bytes)
+    if not configs["nonce"]:
+        configs["nonce"] = os.urandom(12)
+    
+    encrypted_passwords = aesgcm.encrypt(configs["nonce"], passwords_string_as_bytes, None)
+    encrypted_passwords_as_base64 = base64.b64encode(encrypted_passwords).decode()
 
-    return encrypted_passwords_as_base64.decode() #back into text
+    return encrypted_passwords_as_base64
+
 
 #I have no clue, if this is secure (its not )
 #It's probably not
@@ -67,21 +90,21 @@ def get_encrypted_passwords():
 
 def get_decrypted_passwords(encrypted_passwords: str):
 
-    encrypted_passwords_as_base64 = encrypted_passwords.encode() #turn it into bytes
-    decrypted_passwords_as_bytes = base64.urlsafe_b64decode(encrypted_passwords_as_base64) 
-    master_key_as_bytes = master_key.encode() #again make it into bytes
-    decrypted_passwords_string = bytes(
-        encrypted_byte ^ master_key_as_bytes[i % len(master_key_as_bytes)]
-        for i, encrypted_byte in enumerate(decrypted_passwords_as_bytes) # still XOR (also dont understand this shit)
-    )
+    master_key_as_bytes = derive_key()
+    encrypted_passwords_as_bytes = base64.b64decode(encrypted_passwords)
 
-    decrypted_passwords_string = decrypted_passwords_string.decode() #make it text
+    aesgcm = AESGCM(master_key_as_bytes)
+
+    decrypted_passwords = aesgcm.decrypt(configs["nonce"], encrypted_passwords_as_bytes, None)
+
+    decrypted_passwords_string = decrypted_passwords.decode() #make it text
     #FIXME breaks here if master_key is wrong
     if not decrypted_passwords_string:
         return
     decrypted_passwords = json.loads(decrypted_passwords_string) #turn it back into a dict
 
     return decrypted_passwords 
+
 
 def set_timeout_time(new_timeout_time: str):
     configs["timeout_time"] = int(new_timeout_time)
@@ -143,10 +166,14 @@ def load_configs():
     file = open(configs_save_path + configs_file_name) #open file with read access
     configs = json.loads(file.read()) #get configs from file
     file.close() #close file
+    configs["salt"] = base64.b64decode(configs["salt"])
+    configs["nonce"] = base64.b64decode(configs["nonce"])
 
 def save_configs():
     global configs
-    os.makedirs(configs_save_path, exist_ok = True) #makes file/path if not there 
+    os.makedirs(configs_save_path, exist_ok = True) #makes file/path if not there
+    configs["salt"] = base64.b64encode(configs["salt"]).decode()
+    configs["nonce"] = base64.b64encode(configs["nonce"]).decode()
     file = open(configs_save_path + configs_file_name, "w") #opens the file with write access
     file.write(json.dumps(configs)) #writes the configs as string
     file.close() #closes file
@@ -278,6 +305,7 @@ def cli_entry_point(): #just the basic test function for now
             t.start()
         except SystemExit:
             continue
+    t.cancel()
 
 
 
