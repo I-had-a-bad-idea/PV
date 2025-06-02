@@ -72,8 +72,8 @@ def get_encrypted_passwords():
     master_key_as_bytes = derive_key() #get key
 
     aesgcm = AESGCM(master_key_as_bytes) #create AESGCM with key
-    if not configs["nonce"]:
-        configs["nonce"] = os.urandom(12) #create nonce if needed
+    
+    configs["nonce"] = os.urandom(12) #create new nonce every session
     
     encrypted_passwords = aesgcm.encrypt(configs["nonce"], passwords_string_as_bytes, None) #encrypt passwords
     encrypted_passwords_as_base64 = base64.b64encode(encrypted_passwords).decode() #convert them to make them safe for storing
