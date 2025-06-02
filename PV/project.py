@@ -22,8 +22,8 @@ configs : dict = {
     "save_directory_path": "C:\\ProgramData\\PV\\",  #The directory for the password file
     "save_file_name": "PV_passwords",  #The name of the password file
     "timeout_time": 600,  #The time in seconds until the programm automatically stops
-    "nonce": None,
-    "salt": None,
+    "nonce": None,  #the nonce used for the user
+    "salt": None,  #the salt used for the user
 }
 
 configs_save_path : str = "C:\\ProgramData\\PV\\"  #not inside configs, as it should not change (otherwise we wont find it)
@@ -42,16 +42,16 @@ def set_master_key(new_key: str, old_key: str):
         if old_key != master_key: #make sure the know the old key, before changing it
             print("old master key is wrong, or something like that (still working on this message)")
             return
-    remove_password(master_key)
+    remove_password(master_key) #remove old master_key from dict
     master_key = new_key #set the new key
-    add_password(master_key, master_key)
+    add_password(master_key, master_key) #add new one needed for authentification
 
     
 def print_password_names():
     for password_name in passwords:
         print(password_name)
 
-
+#creates salt and encryption key
 def derive_key() -> bytes:
     if not configs["salt"]:
         configs["salt"] = os.urandom(16)
@@ -69,36 +69,36 @@ def derive_key() -> bytes:
 def get_encrypted_passwords():
     passwords_string = json.dumps(passwords) #turn the dict into a str
     passwords_string_as_bytes = passwords_string.encode() #turn the str into bytes
-    master_key_as_bytes = derive_key()
+    master_key_as_bytes = derive_key() #get key
 
-    aesgcm = AESGCM(master_key_as_bytes)
+    aesgcm = AESGCM(master_key_as_bytes) #create AESGCM with key
     if not configs["nonce"]:
-        configs["nonce"] = os.urandom(12)
+        configs["nonce"] = os.urandom(12) #create nonce if needed
     
-    encrypted_passwords = aesgcm.encrypt(configs["nonce"], passwords_string_as_bytes, None)
-    encrypted_passwords_as_base64 = base64.b64encode(encrypted_passwords).decode()
+    encrypted_passwords = aesgcm.encrypt(configs["nonce"], passwords_string_as_bytes, None) #encrypt passwords
+    encrypted_passwords_as_base64 = base64.b64encode(encrypted_passwords).decode() #convert them to make them safe for storing
 
     return encrypted_passwords_as_base64
 
 
-#I have no clue, if this is secure (its not )
-#It's probably not
-#But who cares?
+#I have no clue, if this is secure
+#I mean its a good encryption thingy
+#Who cares. I warned them if its not
 #...
 #Wait you're reading this, why?
 #Poor soul having to look at my code, I am deeply sorry
 
 def get_decrypted_passwords(encrypted_passwords: str):
 
-    master_key_as_bytes = derive_key()
-    encrypted_passwords_as_bytes = base64.b64decode(encrypted_passwords)
+    master_key_as_bytes = derive_key() #get key
+    encrypted_passwords_as_bytes = base64.b64decode(encrypted_passwords) #convert them into something you can work with
 
-    aesgcm = AESGCM(master_key_as_bytes)
+    aesgcm = AESGCM(master_key_as_bytes) 
 
-    decrypted_passwords = aesgcm.decrypt(configs["nonce"], encrypted_passwords_as_bytes, None)
+    decrypted_passwords = aesgcm.decrypt(configs["nonce"], encrypted_passwords_as_bytes, None) #decrypt passwords
 
     decrypted_passwords_string = decrypted_passwords.decode() #make it text
-    #FIXME breaks here if master_key is wrong
+    #FIXME breaks here if master_key is wrong, but doesnt let in
     if not decrypted_passwords_string:
         return
     decrypted_passwords = json.loads(decrypted_passwords_string) #turn it back into a dict
@@ -120,6 +120,8 @@ def set_save_path(new_save_path: str):
         print("unable to save at this path, returning to previous")
         configs["save_directory_path"] = old_save_path 
         save() #save at the old path
+        return
+    print("successfully changed save path to ", configs["save_directory_path"]) #let the user know
         
 
 def set_file_name(new_file_name: str):
@@ -132,21 +134,26 @@ def set_file_name(new_file_name: str):
         print("unable to save with this name, returning to previous")
         configs["save_file_name"] = old_file_name #return and save with the old name
         save()
+        return
+    print("successfully changed file name to ", configs["save_file_name"]) #let the user know
 
-#used whe new path is set
+#only meant as helper function for now. #TODO make this into a command
 def delete_passwords_save_file():
     if not os.path.exists(configs["save_directory_path"] + configs["save_file_name"]): #if there is no save file, there is nothing to delete
         return
     os.remove(configs["save_directory_path"] + configs["save_file_name"])
+    print("deleted save file ", configs["save_file_name"], " at ", configs["save_directory_path"])
 
+#helper function only
 def get_password(password_name: str):
     if password_name in passwords: 
         return passwords[password_name] #just gets the password for the given name
     return "" #if password doesnt exist returns nothing 
 
+
 def print_password(password_name: str):
     print("password_name: ", password_name) 
-    print("password: ", get_password(password_name)) #prints, what is gets, could be ""
+    print("password: ", get_password(password_name)) #prints, what it gets, could be "" (nothing)
 
 
 def save():
@@ -157,6 +164,7 @@ def save():
     file.write(encrypted_passwords) #writes the encrypted_passwords
     file.close() #closes file
     save_configs()
+    print("Saved")
 
 
 def load_configs():
@@ -169,6 +177,7 @@ def load_configs():
     configs["salt"] = base64.b64decode(configs["salt"])
     configs["nonce"] = base64.b64decode(configs["nonce"])
 
+
 def save_configs():
     global configs
     os.makedirs(configs_save_path, exist_ok = True) #makes file/path if not there
@@ -180,7 +189,7 @@ def save_configs():
 
 
 def authenticate(entered_master_key: str):
-    load_configs()
+    load_configs() #first load configs to know where save file is
     global is_authenticated
     global master_key
     global passwords
@@ -308,7 +317,7 @@ def cli_entry_point(): #just the basic test function for now
     t.cancel()
 
 
-
+#for overtime. Connected to timer t in cli_entry_point()
 def timeout():
     global overtime
     overtime = True
