@@ -32,11 +32,10 @@ PV is a CLI for managing your passwords, because sticky notes are only secure if
 
 ## Features
 
-- **Encryption!** No one knows how strong, but it’s there.
-- **Master Key**: The one password to rule them all (and the one you really shouldn’t forget).
+- **AES-GCM Encryption!** No one knows how strong, but it’s there.
+- **Master Key**: The one password to encrypt them all (and the one you really shouldn’t forget).
 - **Add/Remove/List passwords** (the holy trinity of password management)
 - **CLI interface:** For people who fear GUIs, or just like typing.
-
 - **No Cloud**: If you want your passwords stolen, you’ll have to do it yourself.
 - **Extendable**: Use PV as a starting point for your own password manager. Go wild. If you make something awesome, tell me
 - **Pythonic Code**: Written in Python. Easy to read, easy to break—wait, no, scratch that last part.
@@ -47,6 +46,7 @@ PV is a CLI for managing your passwords, because sticky notes are only secure if
 
 - Python 3.7+
 - pip  (or sacrifice a rubber duck to the Python gods, whichever works)
+- cryptography and idna as libaries
 
 ---
 
@@ -103,41 +103,36 @@ password: 123456
 PV> exit
 Exiting PV
 saves at:  C:\ProgramData\PV\PV_passwords
-```
+Saved
 
----
+#everytime you want to access your passwords
 
-## Quick Start
-
-```bash
-# Install (see above)
 pv authenticate mysupersecretkey
+Successfully authenticated!
+Welcome to PV
 
-PV> add
-Name: github
-Password: hunter2
-
-PV> passwords
-github
-
-PV> password
-Name: github
-Password: hunter2
+PV> password github
+password_name: github
+password: 123456
 
 PV> exit
+Exiting PV
+saves at:  C:\ProgramData\PV\PV_passwords
+Saved
+
 ```
 
 ---
 
 ## Where are my secrets?
 
-PV stores your (encrypted!) passwords in a file called `PV_passwords` in `C:\ProgramData\PV`. At least, unless you change the file location. Then that new location gets saved in the `PV_configs` file. Unless you move/delete that (in which case, I hope you remember where you put it). If you want to delete all your secrets, delete that file. If you want to move it to a USB stick and throw it in a volcano, go wild.
+PV stores your (encrypted!) passwords in a file called `PV_passwords` in `C:\ProgramData\PV`. At least, unless you change the file location. Then that new location gets saved in the `PV_configs` file. Unless you move/delete that (in which case, I hope you remember where you put it). If you want to delete all your secrets, delete the PV folder. If you want to move it to a USB stick and throw it in a volcano, go wild.
 
 ---
 
-## Can I change my master_key?
+## Can I change my master key?
 
-You can change your master_key at any time. But remember: with great power comes great responsibility (to not forget your new master key).
+You can change your master key at any time. But remember: with great power comes great responsibility (to not forget your new master key).
 
 ```bash
 pv authenticate old_master_key # if you are no longer authenticated
@@ -212,4 +207,4 @@ Open an issue or PR right here on GitHub. Carrier pigeon support coming soon. If
 
 ---
 
-Thanks for reading! Now go hoard some passwords like a dragon.
+Thanks for reading! Now go hoard some passwords.
