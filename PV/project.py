@@ -2,12 +2,15 @@
 import argparse
 import json
 import os
+import cryptography.exceptions
 from idna import encode
 import base64
+import pyperclip
 from threading import Timer
 from cryptography.hazmat.primitives.ciphers.aead import AESGCM
 from cryptography.hazmat.primitives.kdf.scrypt import Scrypt
 from cryptography.hazmat.backends import default_backend
+import getpass
 
 
 passwords : dict = {} #Just a dictionary, where the passwords are saved
@@ -22,19 +25,21 @@ configs : dict = {
     "save_directory_path": "C:\\ProgramData\\PV\\",  #The directory for the password file
     "save_file_name": "PV_passwords",  #The name of the password file
     "timeout_time": 600,  #The time in seconds until the programm automatically stops
-    "nonce": None,  #the nonce used for the user
+    "nonce": None,  #the nonce used for the session
     "salt": None,  #the salt used for the user
 }
 
 configs_save_path : str = "C:\\ProgramData\\PV\\"  #not inside configs, as it should not change (otherwise we wont find it)
 configs_file_name : str = "PV_configs"
 
+
 def add_password(password_name: str, password: str):
     passwords[password_name] = password #that's it, just adding the password
+    if password_name != master_key:
+        print("added ", password_name)
 
 def remove_password(password_name: str):
     passwords.pop(password_name, None) #similar just getting rid of the password 
-
 
 def set_master_key(new_key: str, old_key: str):
     global master_key #otherwise it thinks it's a local one
@@ -46,22 +51,22 @@ def set_master_key(new_key: str, old_key: str):
     master_key = new_key #set the new key
     add_password(master_key, master_key) #add new one needed for authentification
 
-    
 def print_password_names():
     for password_name in passwords:
-        print(password_name)
+        if password_name != master_key:
+            print(password_name)
 
 #creates salt and encryption key
 def derive_key() -> bytes:
     if not configs["salt"]:
-        configs["salt"] = os.urandom(16)
+        configs["salt"] = os.urandom(32)
 
     kdf = Scrypt(
         salt = configs["salt"],
         length = 32,  # 32 bytes = 256 bits
-        n = 2 ** 14,
-        r = 8,
-        p = 1,
+        n = 2 ** 18,  #iterations
+        r = 8, #block size
+        p = 1, #parallelization 
         backend = default_backend()
     )
     return kdf.derive(master_key.encode())
@@ -73,7 +78,7 @@ def get_encrypted_passwords():
 
     aesgcm = AESGCM(master_key_as_bytes) #create AESGCM with key
     
-    configs["nonce"] = os.urandom(12) #create new nonce every session
+    configs["nonce"] = os.urandom(32) #create new nonce every session
     
     encrypted_passwords = aesgcm.encrypt(configs["nonce"], passwords_string_as_bytes, None) #encrypt passwords
     encrypted_passwords_as_base64 = base64.b64encode(encrypted_passwords).decode() #convert them to make them safe for storing
@@ -95,10 +100,13 @@ def get_decrypted_passwords(encrypted_passwords: str):
 
     aesgcm = AESGCM(master_key_as_bytes) 
 
-    decrypted_passwords = aesgcm.decrypt(configs["nonce"], encrypted_passwords_as_bytes, None) #decrypt passwords
+    try:
+        decrypted_passwords = aesgcm.decrypt(configs["nonce"], encrypted_passwords_as_bytes, None) #decrypt passwords
+    except cryptography.exceptions.InvalidTag: #if invalid master_key
+        return {"wrong": "master_key"} #just return some dict, where there isnt the master_key, as that is being checked later
+                #cant be an emty one, as otherwise it sees it as a new user
 
     decrypted_passwords_string = decrypted_passwords.decode() #make it text
-    #FIXME breaks here if master_key is wrong, but doesnt let in
     if not decrypted_passwords_string:
         return
     decrypted_passwords = json.loads(decrypted_passwords_string) #turn it back into a dict
@@ -145,15 +153,19 @@ def delete_passwords_save_file():
     print("deleted save file ", configs["save_file_name"], " at ", configs["save_directory_path"])
 
 #helper function only
-def get_password(password_name: str):
+def get_password_(password_name: str):
     if password_name in passwords: 
         return passwords[password_name] #just gets the password for the given name
     return "" #if password doesnt exist returns nothing 
 
 
-def print_password(password_name: str):
-    print("password_name: ", password_name) 
-    print("password: ", get_password(password_name)) #prints, what it gets, could be "" (nothing)
+def get_password(password_name: str, _print: bool):
+    pyperclip.copy(get_password_(password_name)) #copies, what it gets, could be "" (nothing)
+    if _print:
+        print("password_name: ", password_name) 
+        print("password: ", get_password_(password_name)) #prints, what it gets, could be "" (nothing)
+    else:
+        print("copied ", password_name, " to clipboard")
 
 
 def save():
@@ -221,20 +233,21 @@ def cli_entry_point(): #just the basic test function for now
     parser = argparse.ArgumentParser() #argparse setup
     subparsers = parser.add_subparsers(dest = "command")
 
-    parser_master_key = subparsers.add_parser("authenticate", help = "Enter the master_key for authentification") #the authentication command
-    parser_master_key.add_argument("master_key", help = "The master_key you chose")
+    parser_master_key = subparsers.add_parser("authenticate", help = "Authenticate to access passwords") #the authentication command
 
     args = parser.parse_args()
 
     if args.command == "authenticate": #the authentication command has been called
-        authenticate(args.master_key) #do authentication
+        entered_master_key = getpass.getpass("Enter master_key: ")  #getpass doesnt show the key hwen entering
+        authenticate(entered_master_key) #do authentication
     else:
         print("Please authenticate using   pv authenticate   ")
         return #ask for authentication
     if not is_authenticated:
-        print("wrong master_key, or maybe I made a mistake")
+        print("Wrong master_key")
         return #it has been wrong
     
+
     add_password(master_key, master_key) #add the master key password used for authentication (look above)
     
     print("Successfully authenticated!")
@@ -244,19 +257,18 @@ def cli_entry_point(): #just the basic test function for now
     #add all the commands
     parser_add_password = subparsers.add_parser("add", help = "Add a new password")
     parser_add_password.add_argument("password_name", help = "The name of the password")
-    parser_add_password.add_argument("password", help = "The passworditself")
+    parser_add_password.add_argument("password", help = "The password itself")
 
     parser_remove_password = subparsers.add_parser("remove", help = "Remove a password")
     parser_remove_password.add_argument("password_name", help = "The name of the password to delete")
 
     parser_set_master_key = subparsers.add_parser("new_master_key", help = "Set a new master key")
-    parser_set_master_key.add_argument("new_master_key", help = "The new master key")
-    parser_set_master_key.add_argument("old_master_key", help = "The old master key")
 
     parser_get_password_names_list = subparsers.add_parser("passwords", help = "Shows all password names")
 
     parser_get_password = subparsers.add_parser("password", help = "Get a password")
     parser_get_password.add_argument("password_name", help = "The name of the password")
+    parser_get_password.add_argument("--print", action = "store_true", help = "Print password insteead of copying it to clipboard")
 
     parser_set_timeout_time = subparsers.add_parser("timeout", help = "Set new timeout time")
     parser_set_timeout_time.add_argument("time", help = "The new timeout time")
@@ -266,6 +278,7 @@ def cli_entry_point(): #just the basic test function for now
 
     parser_set_file_name = subparsers.add_parser("file_name", help = "Configure the save file name")
     parser_set_file_name.add_argument("name", help = "The new name for the file")
+
 
     t = Timer(configs["timeout_time"], timeout)
     t.start()
@@ -296,11 +309,13 @@ def cli_entry_point(): #just the basic test function for now
             elif args.command == "remove":
                  remove_password(args.password_name)
             elif args.command == "new_master_key":
-                set_master_key(args.new_master_key, args.old_master_key)
+                old_master_key = getpass.getpass("Enter old master key: ")
+                new_master_key = getpass.getpass("Enter new master key: ")
+                set_master_key(new_master_key, old_master_key)
             elif args.command == "passwords":
                 print_password_names()
             elif args.command == "password":
-                print_password(args.password_name)
+                get_password(args.password_name, args.print)
             elif args.command == "timeout":
                 set_timeout_time(args.time)
             elif args.command == "save_path":

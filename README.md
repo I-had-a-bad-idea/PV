@@ -39,6 +39,7 @@ PV is a CLI for managing your passwords, because sticky notes are only secure if
 - **No Cloud**: If you want your passwords stolen, you’ll have to do it yourself.
 - **Extendable**: Use PV as a starting point for your own password manager. Go wild. If you make something awesome, tell me
 - **Pythonic Code**: Written in Python. Easy to read, easy to break—wait, no, scratch that last part.
+- **Clipboard**: Directly copies the password to your clipboard. No more squinting at your screen and mistyping “5” as “S”.
 
 ---
 
@@ -46,7 +47,12 @@ PV is a CLI for managing your passwords, because sticky notes are only secure if
 
 - Python 3.7+
 - pip  (or sacrifice a rubber duck to the Python gods, whichever works)
-- cryptography and idna as libaries
+- The following libraries, easily appeased via pip:
+  - cryptography
+  - idna
+  - pyperclip
+
+> **Note:** You do NOT need to install standard libraries like `os`, `base64`, or `threading`. Those are baked right into Python, just like existential dread.
 
 ---
 
@@ -64,8 +70,9 @@ pip install .
 ## Usage
 
 ```bash
-pv authenticate master_key #in your favorurite terminal 
-#master_key should be the master key you want to use, not master_key
+pv authenticate      #in your favorurite terminal 
+Enter master_key:   master_key #when typing master_key will not be visible 
+# master_key should be the master key you want to use, not literally "master_key"
 
 #now PV>     should appear. From now own you’re authenticated
 
@@ -87,18 +94,20 @@ exit        # Save and exit PV (but why would you want to do that?)
 
 ```bash
 # Install (see above)
-pv authenticate mysupersecretkey
+pv authenticate
+Enter master_key:  mysupersecretkey # Key will be hidden. No peeking.
+
 Successfully authenticated!
 Welcome to PV
 
 PV> add github 123456
+added github
 
 PV> passwords
 github
 
 PV> password github
-password_name: github
-password: 123456
+copied github to clipboard
 
 PV> exit
 Exiting PV
@@ -107,13 +116,13 @@ Saved
 
 #everytime you want to access your passwords
 
-pv authenticate mysupersecretkey
+pv authenticate
+Enter master_key: mysupersecretkey  # Key won’t be visible. Still.
 Successfully authenticated!
 Welcome to PV
 
 PV> password github
-password_name: github
-password: 123456
+copied github to clipboard
 
 PV> exit
 Exiting PV
@@ -135,9 +144,13 @@ PV stores your (encrypted!) passwords in a file called `PV_passwords` in `C:\Pro
 You can change your master key at any time. But remember: with great power comes great responsibility (to not forget your new master key).
 
 ```bash
-pv authenticate old_master_key # if you are no longer authenticated
+pv authenticate # if you are no longer authenticated
+Enter master_key: old_master_key 
 
-PV> new_master_key new_key old_master_key # new_key and old_master_key are supposed to be your keys
+PV> new_master_key  
+Enter old master key: new_key  # Don't worry, your passwords are still hiding
+Enter new master key: old_key  # The new_key and old_master_key are supposed to be your keys, not your cat's birthday
+
 
 ```
 ---
