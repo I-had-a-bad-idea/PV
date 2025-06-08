@@ -121,8 +121,9 @@ Enter master_key: mysupersecretkey  # Key won’t be visible. Still.
 Successfully authenticated!
 Welcome to PV
 
-PV> password github
-copied github to clipboard
+PV> password github --print
+password_name: github
+password: 123456
 
 PV> exit
 Exiting PV
