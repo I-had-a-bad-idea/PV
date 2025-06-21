@@ -134,8 +134,9 @@ loads from:  C:\ProgramData\PV\PV_passwords
 Successfully authenticated!
 Welcome to PV
 
-PV>     password github
-copied  github  to clipboard
+PV> password github --print
+password_name: github
+password: 123456
 
 PV>     exit
 Exiting PV
