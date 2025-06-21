@@ -70,9 +70,16 @@ pip install .
 ## Usage
 
 ```bash
-pv authenticate      #in your favorurite terminal 
-Enter master_key:   master_key #when typing master_key will not be visible 
+pv       #in your favorurite terminal 
+You do not have any passwords yet. Please think of a master key to use for PV #it knows if you have stored any passwords before
+Enter the master key you want to use:    master_key 
+
+#or
+Passwords found. Please enter your master key to use PV.
+Enter your master key:    master_key
+
 # master_key should be the master key you want to use, not literally "master_key"
+
 
 #now PV>     should appear. From now own you’re authenticated
 
@@ -94,37 +101,43 @@ exit        # Save and exit PV (but why would you want to do that?)
 
 ```bash
 # Install (see above)
-pv authenticate
-Enter master_key:  mysupersecretkey # Key will be hidden. No peeking.
+pv
+
+You do not have any passwords yet. Please think of a master key to use for PV
+Enter the master key you want to use:   mysupersecretkey    # Key will be hidden. No peeking.
 
 Successfully authenticated!
 Welcome to PV
 
-PV> add github 123456
-added github
+PV>     add github 123456
+added  github
 
-PV> passwords
+PV>     passwords
 github
 
-PV> password github
-copied github to clipboard
+PV>     password github
+copied  github  to clipboard
 
-PV> exit
+PV>     exit
 Exiting PV
 saves at:  C:\ProgramData\PV\PV_passwords
 Saved
 
+
 #everytime you want to access your passwords
 
-pv authenticate
-Enter master_key: mysupersecretkey  # Key won’t be visible. Still.
+pv
+Passwords found. Please enter your master key to use PV.
+Enter your master key:    mysupersecretkey      # Key won’t be visible. Still.
+
+loads from:  C:\ProgramData\PV\PV_passwords
 Successfully authenticated!
 Welcome to PV
 
-PV> password github
-copied github to clipboard
+PV>     password github
+copied  github  to clipboard
 
-PV> exit
+PV>     exit
 Exiting PV
 saves at:  C:\ProgramData\PV\PV_passwords
 Saved

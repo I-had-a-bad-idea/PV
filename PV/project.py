@@ -17,7 +17,6 @@ passwords : dict = {} #Just a dictionary, where the passwords are saved
 
 master_key : str = "Test_key" #The one key to encrypt them all
 
-is_authenticated : bool = False
 
 overtime : bool = False
 
@@ -95,10 +94,10 @@ def get_encrypted_passwords():
 
 def get_decrypted_passwords(encrypted_passwords: str):
 
-    master_key_as_bytes = derive_key() #get key
+    master_key_deriviate = derive_key() #get key
     encrypted_passwords_as_bytes = base64.b64decode(encrypted_passwords) #convert them into something you can work with
 
-    aesgcm = AESGCM(master_key_as_bytes) 
+    aesgcm = AESGCM(master_key_deriviate) 
 
     try:
         decrypted_passwords = aesgcm.decrypt(configs["nonce"], encrypted_passwords_as_bytes, None) #decrypt passwords
@@ -169,62 +168,74 @@ def get_password(password_name: str, _print: bool):
 
 
 def save():
-    os.makedirs(configs["save_directory_path"], exist_ok = True) #makes file/path if not there 
+    encrypted_passwords = get_encrypted_passwords()
+
     print("saves at: ", configs["save_directory_path"] + configs["save_file_name"])
-    file = open(configs["save_directory_path"] + configs["save_file_name"], "w") #opens the file for writing
-    encrypted_passwords = get_encrypted_passwords() #encrypts the passwords
-    file.write(encrypted_passwords) #writes the encrypted_passwords
-    file.close() #closes file
+    write_data_to_file(encrypted_passwords, configs["save_directory_path"], configs["save_file_name"])
+
     save_configs()
+
     print("Saved")
 
 
 def load_configs():
     global configs
-    if not os.path.exists(configs_save_path + configs_file_name): #if there is no config file, standard settings are used
+
+    configs_in_file = read_data_from_file(configs_save_path + configs_file_name)
+
+    if not configs_in_file:
         return
-    file = open(configs_save_path + configs_file_name) #open file with read access
-    configs = json.loads(file.read()) #get configs from file
-    file.close() #close file
+    
+    configs = json.loads(configs_in_file)
+
     configs["salt"] = base64.b64decode(configs["salt"])
     configs["nonce"] = base64.b64decode(configs["nonce"])
 
 
 def save_configs():
     global configs
-    os.makedirs(configs_save_path, exist_ok = True) #makes file/path if not there
+
     configs["salt"] = base64.b64encode(configs["salt"]).decode()
     configs["nonce"] = base64.b64encode(configs["nonce"]).decode()
-    file = open(configs_save_path + configs_file_name, "w") #opens the file with write access
-    file.write(json.dumps(configs)) #writes the configs as string
-    file.close() #closes file
+
+    write_data_to_file(configs, configs_save_path, configs_file_name)
 
 
-def authenticate(entered_master_key: str):
-    load_configs() #first load configs to know where save file is
-    global is_authenticated
+#returns true if correct master key
+def authentification() -> bool:
     global master_key
     global passwords
-    master_key = entered_master_key #apply key
-    if not os.path.exists(configs["save_directory_path"] + configs["save_file_name"]): #if there is no save file, there are no passwors, therefore this is a new one
-        is_authenticated = True #allow the key as the key chosen by the user
-        return
+
+    load_configs()
+
+
+    if not os.path.exists(configs["save_directory_path"] + configs["save_file_name"]):
+        print("You do not have any passwords yet. Please think of a master key to use for PV")
+        master_key = getpass.getpass("Enter the master key you want to use: ")
+
+        return True
+    
+    print("Passwords found. Please enter your master key to use PV.")
+    master_key = getpass.getpass("Enter your master key: ")
+    
     print("loads from: ", configs["save_directory_path"] + configs["save_file_name"]) 
-    file = open(configs["save_directory_path"] + configs["save_file_name"], "r") #open file with read access
-    loaded_passwords = file.read() #get encrypted passwords from file
-    file.close() #close file
-    if not loaded_passwords: #if there are no passwords in the file they must have been deleted
-        is_authenticated = True #therefore it is fine if we authenticate them
-        return
-    decrypted_passwords = get_decrypted_passwords(loaded_passwords) #decrypt passwords
-    if decrypted_passwords: #if they are not empty
-        passwords = decrypted_passwords #set the passwords
-    else: #if passwords are a dict, but empty
-        is_authenticated = True #no passwords therefore doable
-        return
+    loaded_passwords = read_data_from_file(configs["save_directory_path"] + configs["save_file_name"])
+    if not loaded_passwords: #if the file was empty
+        return True
+    
+    
+    decrypted_passwords = get_decrypted_passwords(loaded_passwords)
+
+    if not decrypted_passwords: #if the enrcypted passwordsare empty
+        return True
+    
+    passwords = decrypted_passwords
+
     if master_key in passwords:
-        if passwords[master_key] == master_key: #look for the master key in the passwords
-                is_authenticated = True #if it is there accept teh user
+        if passwords[master_key] == master_key: #if the master_key is in the dictionary
+            return True
+
+    return False
 
 
 def cli_entry_point(): #just the basic test function for now
@@ -232,18 +243,8 @@ def cli_entry_point(): #just the basic test function for now
 
     parser = argparse.ArgumentParser() #argparse setup
     subparsers = parser.add_subparsers(dest = "command")
-
-    parser_master_key = subparsers.add_parser("authenticate", help = "Authenticate to access passwords") #the authentication command
-
-    args = parser.parse_args()
-
-    if args.command == "authenticate": #the authentication command has been called
-        entered_master_key = getpass.getpass("Enter master_key: ")  #getpass doesnt show the key hwen entering
-        authenticate(entered_master_key) #do authentication
-    else:
-        print("Please authenticate using   pv authenticate   ")
-        return #ask for authentication
-    if not is_authenticated:
+   
+    if not authentification():
         print("Wrong master_key")
         return #it has been wrong
     
@@ -255,29 +256,7 @@ def cli_entry_point(): #just the basic test function for now
 
 
     #add all the commands
-    parser_add_password = subparsers.add_parser("add", help = "Add a new password")
-    parser_add_password.add_argument("password_name", help = "The name of the password")
-    parser_add_password.add_argument("password", help = "The password itself")
-
-    parser_remove_password = subparsers.add_parser("remove", help = "Remove a password")
-    parser_remove_password.add_argument("password_name", help = "The name of the password to delete")
-
-    parser_set_master_key = subparsers.add_parser("new_master_key", help = "Set a new master key")
-
-    parser_get_password_names_list = subparsers.add_parser("passwords", help = "Shows all password names")
-
-    parser_get_password = subparsers.add_parser("password", help = "Get a password")
-    parser_get_password.add_argument("password_name", help = "The name of the password")
-    parser_get_password.add_argument("--print", action = "store_true", help = "Print password insteead of copying it to clipboard")
-
-    parser_set_timeout_time = subparsers.add_parser("timeout", help = "Set new timeout time")
-    parser_set_timeout_time.add_argument("time", help = "The new timeout time")
-
-    parser_set_save_path = subparsers.add_parser("save_path", help = "Configure the path to the save folder")
-    parser_set_save_path.add_argument("path", help = "The path to the directory used for saving")
-
-    parser_set_file_name = subparsers.add_parser("file_name", help = "Configure the save file name")
-    parser_set_file_name.add_argument("name", help = "The new name for the file")
+    add_commands(subparsers)
 
 
     t = Timer(configs["timeout_time"], timeout)
@@ -336,3 +315,49 @@ def cli_entry_point(): #just the basic test function for now
 def timeout():
     global overtime
     overtime = True
+
+
+
+def write_data_to_file(data, directory_path: str, file_name: str):
+    os.makedirs(directory_path, exist_ok = True)
+    
+    file = open(directory_path + file_name, "w") #opens the file with write access
+    file.write(json.dumps(data)) #writes the configs as string
+    file.close() #closes file
+
+
+def read_data_from_file(path_to_file: str) -> str:
+     if not os.path.exists(path_to_file):
+         return ""  #return nothing if file doesnt exist
+     file = open(path_to_file, "r") #open file with read access
+     data = file.read() #read data
+     file.close() #close file
+
+     return data #return data from file
+     
+#adds all commands
+def add_commands(subparsers):
+
+    parser_add_password = subparsers.add_parser("add", help = "Add a new password")
+    parser_add_password.add_argument("password_name", help = "The name of the password")
+    parser_add_password.add_argument("password", help = "The password itself")
+
+    parser_remove_password = subparsers.add_parser("remove", help = "Remove a password")
+    parser_remove_password.add_argument("password_name", help = "The name of the password to delete")
+
+    parser_set_master_key = subparsers.add_parser("new_master_key", help = "Set a new master key")
+
+    parser_get_password_names_list = subparsers.add_parser("passwords", help = "Shows all password names")
+
+    parser_get_password = subparsers.add_parser("password", help = "Get a password")
+    parser_get_password.add_argument("password_name", help = "The name of the password")
+    parser_get_password.add_argument("--print", action = "store_true", help = "Print password insteead of copying it to clipboard")
+
+    parser_set_timeout_time = subparsers.add_parser("timeout", help = "Set new timeout time")
+    parser_set_timeout_time.add_argument("time", help = "The new timeout time")
+
+    parser_set_save_path = subparsers.add_parser("save_path", help = "Configure the path to the save folder")
+    parser_set_save_path.add_argument("path", help = "The path to the directory used for saving")
+
+    parser_set_file_name = subparsers.add_parser("file_name", help = "Configure the save file name")
+    parser_set_file_name.add_argument("name", help = "The new name for the file")
