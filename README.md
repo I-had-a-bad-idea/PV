@@ -81,7 +81,7 @@ Enter your master key:    master_key
 # master_key should be the master key you want to use, not literally "master_key"
 
 
-#now PV>     should appear. From now own you’re authenticated
+#now PV>     should appear. From now own you’re authenticated and can do whatever you desire
 
 add        # Add a password (name, password)
 passwords       # List all your secrets (only the names)

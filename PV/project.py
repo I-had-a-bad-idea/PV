@@ -24,9 +24,10 @@ configs : dict = {
     "save_directory_path": "C:\\ProgramData\\PV\\",  #The directory for the password file
     "save_file_name": "PV_passwords",  #The name of the password file
     "timeout_time": 600,  #The time in seconds until the programm automatically stops
-    "nonce": None,  #the nonce used for the session
     "salt": None,  #the salt used for the user
 }
+
+nonce : bytes
 
 configs_save_path : str = "C:\\ProgramData\\PV\\"  #not inside configs, as it should not change (otherwise we wont find it)
 configs_file_name : str = "PV_configs"
@@ -71,15 +72,17 @@ def derive_key() -> bytes:
     return kdf.derive(master_key.encode())
 
 def get_encrypted_passwords():
+    global nonce
+
     passwords_string = json.dumps(passwords) #turn the dict into a str
     passwords_string_as_bytes = passwords_string.encode() #turn the str into bytes
     master_key_as_bytes = derive_key() #get key
 
     aesgcm = AESGCM(master_key_as_bytes) #create AESGCM with key
     
-    configs["nonce"] = os.urandom(32) #create new nonce every session
+    nonce = os.urandom(32) #create new nonce every session
     
-    encrypted_passwords = aesgcm.encrypt(configs["nonce"], passwords_string_as_bytes, None) #encrypt passwords
+    encrypted_passwords = aesgcm.encrypt(nonce, passwords_string_as_bytes, None) #encrypt passwords
     encrypted_passwords_as_base64 = base64.b64encode(encrypted_passwords).decode() #convert them to make them safe for storing
 
     return encrypted_passwords_as_base64
@@ -93,6 +96,7 @@ def get_encrypted_passwords():
 #Poor soul having to look at my code, I am deeply sorry
 
 def get_decrypted_passwords(encrypted_passwords: str):
+    global nonce
 
     master_key_deriviate = derive_key() #get key
     encrypted_passwords_as_bytes = base64.b64decode(encrypted_passwords) #convert them into something you can work with
@@ -100,7 +104,7 @@ def get_decrypted_passwords(encrypted_passwords: str):
     aesgcm = AESGCM(master_key_deriviate) 
 
     try:
-        decrypted_passwords = aesgcm.decrypt(configs["nonce"], encrypted_passwords_as_bytes, None) #decrypt passwords
+        decrypted_passwords = aesgcm.decrypt(nonce, encrypted_passwords_as_bytes, None) #decrypt passwords
     except cryptography.exceptions.InvalidTag: #if invalid master_key
         return {"wrong": "master_key"} #just return some dict, where there isnt the master_key, as that is being checked later
                 #cant be an emty one, as otherwise it sees it as a new user
@@ -170,8 +174,14 @@ def get_password(password_name: str, _print: bool):
 def save():
     encrypted_passwords = get_encrypted_passwords()
 
+    save_data : dict = {}
+    save_data["version"] = "1.2.0"
+    save_data["passwords"] = encrypted_passwords
+    save_data["nonce"] = base64.b64encode(nonce).decode()
+
+
     print("saves at: ", configs["save_directory_path"] + configs["save_file_name"])
-    write_data_to_file(encrypted_passwords, configs["save_directory_path"], configs["save_file_name"])
+    write_data_to_file(save_data, configs["save_directory_path"], configs["save_file_name"])
 
     save_configs()
 
@@ -205,6 +215,7 @@ def save_configs():
 def authentification() -> bool:
     global master_key
     global passwords
+    global nonce
 
     load_configs()
 
@@ -219,7 +230,17 @@ def authentification() -> bool:
     master_key = getpass.getpass("Enter your master key: ")
     
     print("loads from: ", configs["save_directory_path"] + configs["save_file_name"]) 
-    loaded_passwords = read_data_from_file(configs["save_directory_path"] + configs["save_file_name"])
+    loaded_data = read_data_from_file(configs["save_directory_path"] + configs["save_file_name"])
+
+    try:
+        loaded_data = json.loads(loaded_data)
+        loaded_passwords = loaded_data["passwords"]
+        nonce = base64.b64decode(loaded_data["nonce"])
+    
+    except TypeError:   #if they dont have a version newer than the one versions were added
+        loaded_passwords = loaded_data
+        nonce = configs["nonce"]
+
     if not loaded_passwords: #if the file was empty
         return True
     
