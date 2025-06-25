@@ -39,7 +39,8 @@ def add_password(password_name: str, password: str):
         print("added ", password_name)
 
 def remove_password(password_name: str):
-    passwords.pop(password_name, None) #similar just getting rid of the password 
+    passwords.pop(password_name, None) #similar just getting rid of the password
+    print("Removed ", password_name) 
 
 def set_master_key(new_key: str, old_key: str):
     global master_key #otherwise it thinks it's a local one
@@ -50,6 +51,7 @@ def set_master_key(new_key: str, old_key: str):
     remove_password(master_key) #remove old master_key from dict
     master_key = new_key #set the new key
     add_password(master_key, master_key) #add new one needed for authentification
+    print("Changed master key")
 
 def print_password_names():
     for password_name in passwords:
@@ -175,9 +177,10 @@ def save():
     encrypted_passwords = get_encrypted_passwords()
 
     save_data : dict = {}
-    save_data["version"] = "1.2.0"
+    save_data["version"] = "1.2.1"  #TODO find a way to automate this
     save_data["passwords"] = encrypted_passwords
     save_data["nonce"] = base64.b64encode(nonce).decode()
+
 
 
     print("saves at: ", configs["save_directory_path"] + configs["save_file_name"])
@@ -382,3 +385,18 @@ def add_commands(subparsers):
 
     parser_set_file_name = subparsers.add_parser("file_name", help = "Configure the save file name")
     parser_set_file_name.add_argument("name", help = "The new name for the file")
+
+
+def is_older_version(older: str, than: str) -> bool:
+    if older.split(".")[0] < than.split(".")[0]:
+        return True
+    elif older.split(".")[0] > than.split(".")[0]:
+        return False
+    if older.split(".")[1] < than.split(".")[1]:
+        return True
+    elif older.split(".")[1] > than.split(".")[1]:
+        return False
+    if older.split(".")[2] < than.split(".")[2]:
+        return True
+
+    return False
