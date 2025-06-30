@@ -15,7 +15,7 @@ import getpass
 
 passwords : dict = {} #Just a dictionary, where the passwords are saved
 
-master_key : str = "Test_key" #The one key to encrypt them all
+master_key : str #The one key to encrypt them all
 
 
 overtime : bool = False
@@ -25,6 +25,8 @@ configs : dict = {
     "save_file_name": "PV_passwords",  #The name of the password file
     "timeout_time": 600,  #The time in seconds until the programm automatically stops
     "salt": None,  #the salt used for the user
+    "power of iterations": 18,  #the power of 2 which is used as iterations for the kdf
+
 }
 
 nonce : bytes
@@ -58,6 +60,10 @@ def print_password_names():
         if password_name != master_key:
             print(password_name)
 
+def set_iterations_power(iteration_amount: str):
+    configs["power of iterations"] = int(iteration_amount)
+    print("set number of iterations to 2 **", iteration_amount)
+
 #creates salt and encryption key
 def derive_key() -> bytes:
     if not configs["salt"]:
@@ -66,7 +72,7 @@ def derive_key() -> bytes:
     kdf = Scrypt(
         salt = configs["salt"],
         length = 32,  # 32 bytes = 256 bits
-        n = 2 ** 18,  #iterations
+        n = 2 ** configs["power of iterations"],  #iterations
         r = 8, #block size
         p = 1, #parallelization 
         backend = default_backend()
@@ -204,6 +210,11 @@ def load_configs():
     configs["salt"] = base64.b64decode(configs["salt"])
     configs["nonce"] = base64.b64decode(configs["nonce"])
 
+    ## here are configs, that were added later and have to be checked when loading
+
+    if not "power of iterations" in configs:
+        configs["power of iterations"] = 18
+
 
 def save_configs():
     global configs
@@ -325,6 +336,8 @@ def cli_entry_point(): #just the basic test function for now
                 set_save_path(args.path)
             elif args.command == "file_name":
                 set_file_name(args.name)
+            elif args.command == "iterations":
+                set_iterations_power(args.power)
             else:
                 parser.print_help() #print help, in case they have no idea what they are doing (like me)
 
@@ -386,17 +399,17 @@ def add_commands(subparsers):
     parser_set_file_name = subparsers.add_parser("file_name", help = "Configure the save file name")
     parser_set_file_name.add_argument("name", help = "The new name for the file")
 
+    parser_set_iteration_power = subparsers.add_parser("iterations", help = "Set the power of 2 used as iterations when generating key")
+    parser_set_iteration_power.add_argument("power", help = "The power itself (only a full, positive number)")
+
+
 
 def is_older_version(older: str, than: str) -> bool:
-    if older.split(".")[0] < than.split(".")[0]:
-        return True
-    elif older.split(".")[0] > than.split(".")[0]:
+    if older.split(".")[0] > than.split(".")[0]:
         return False
-    if older.split(".")[1] < than.split(".")[1]:
-        return True
-    elif older.split(".")[1] > than.split(".")[1]:
+    if older.split(".")[1] > than.split(".")[1]:
         return False
-    if older.split(".")[2] < than.split(".")[2]:
-        return True
-
-    return False
+    if older.split(".")[2] > than.split(".")[2]:
+        return False
+    
+    return True
