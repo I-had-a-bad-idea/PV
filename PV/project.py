@@ -31,6 +31,8 @@ configs : dict = {
 
 nonce : bytes
 
+VERSION : str = "1.2.2"
+
 configs_save_path : str = "C:\\ProgramData\\PV\\"  #not inside configs, as it should not change (otherwise we wont find it)
 configs_file_name : str = "PV_configs"
 
@@ -38,7 +40,7 @@ configs_file_name : str = "PV_configs"
 def add_password(password_name: str, password: str):
     passwords[password_name] = password #that's it, just adding the password
     if password_name != master_key:
-        print("added ", password_name)
+        print("Added ", password_name)
 
 def remove_password(password_name: str):
     passwords.pop(password_name, None) #similar just getting rid of the password
@@ -48,7 +50,7 @@ def set_master_key(new_key: str, old_key: str):
     global master_key #otherwise it thinks it's a local one
     if master_key: 
         if old_key != master_key: #make sure the know the old key, before changing it
-            print("old master key is wrong, or something like that (still working on this message)")
+            print("Old master key is wrong")
             return
     remove_password(master_key) #remove old master_key from dict
     master_key = new_key #set the new key
@@ -57,7 +59,7 @@ def set_master_key(new_key: str, old_key: str):
 
 def print_password_names():
     for password_name in passwords:
-        if password_name != master_key:
+        if password_name != master_key: #We dont want to print the master key out, else everyone can see it
             print(password_name)
 
 def set_iterations_power(iteration_amount: str):
@@ -72,12 +74,12 @@ def derive_key() -> bytes:
     kdf = Scrypt(
         salt = configs["salt"],
         length = 32,  # 32 bytes = 256 bits
-        n = 2 ** configs["power of iterations"],  #iterations
+        n = 2 ** configs["power of iterations"],  #number of iterations
         r = 8, #block size
         p = 1, #parallelization 
         backend = default_backend()
     )
-    return kdf.derive(master_key.encode())
+    return kdf.derive(master_key.encode())  #derieve the key from the given master key
 
 def get_encrypted_passwords():
     global nonce
@@ -126,42 +128,44 @@ def get_decrypted_passwords(encrypted_passwords: str):
 
 
 def set_timeout_time(new_timeout_time: str):
-    configs["timeout_time"] = int(new_timeout_time)
+    configs["timeout_time"] = int(new_timeout_time) #convert to int as waiting "600" can be difficult
     print("Set timeout time to ", configs["timeout_time"])
+
 
 def set_save_path(new_save_path: str):
     old_save_path = configs["save_directory_path"]
-    delete_passwords_save_file()
-    configs["save_directory_path"] = new_save_path
+    delete_file(configs["save_directory_path"] + configs["save_file_name"])  #delete the old file, as to not have dozens of files lying around
+    configs["save_directory_path"] = new_save_path 
     try:
-        save() #try to save 
+        save() #try to save  
     except OSError: #if for example we need admin rights
-        print("unable to save at this path, returning to previous")
+        print("Unable to save at this path, returning to previous")
         configs["save_directory_path"] = old_save_path 
         save() #save at the old path
         return
-    print("successfully changed save path to ", configs["save_directory_path"]) #let the user know
+    print("Successfully changed save path to ", configs["save_directory_path"]) #let the user know
         
 
 def set_file_name(new_file_name: str):
     old_file_name = configs["save_file_name"]
-    delete_passwords_save_file()
+    delete_file(configs["save_directory_path"] + configs["save_file_name"])   #delete the old file, as to not have dozens of files lying around
     configs["save_file_name"] = new_file_name
     try:
         save() #try to save
-    except OSError: #if unable to save, due to reasons
+    except OSError: #if unable to save, due to reasons 
         print("unable to save with this name, returning to previous")
         configs["save_file_name"] = old_file_name #return and save with the old name
         save()
         return
     print("successfully changed file name to ", configs["save_file_name"]) #let the user know
 
-#only meant as helper function for now. #TODO make this into a command
-def delete_passwords_save_file():
-    if not os.path.exists(configs["save_directory_path"] + configs["save_file_name"]): #if there is no save file, there is nothing to delete
-        return
-    os.remove(configs["save_directory_path"] + configs["save_file_name"])
-    print("deleted save file ", configs["save_file_name"], " at ", configs["save_directory_path"])
+
+def cleanup():
+    delete_file(configs["save_directory_path"] + configs["save_file_name"])
+    delete_file(configs_save_path + configs_file_name)
+
+    print("Deleted all files made by PV")
+    print("Thank you for using PV")
 
 #helper function only
 def get_password_(password_name: str):
@@ -173,17 +177,17 @@ def get_password_(password_name: str):
 def get_password(password_name: str, _print: bool):
     pyperclip.copy(get_password_(password_name)) #copies, what it gets, could be "" (nothing)
     if _print:
-        print("password_name: ", password_name) 
-        print("password: ", get_password_(password_name)) #prints, what it gets, could be "" (nothing)
+        print("Password_name: ", password_name) 
+        print("Password: ", get_password_(password_name)) #prints, what it gets, could be "" (nothing)
     else:
-        print("copied ", password_name, " to clipboard")
+        print("Copied ", password_name, " to clipboard")
 
 
 def save():
     encrypted_passwords = get_encrypted_passwords()
 
     save_data : dict = {}
-    save_data["version"] = "1.2.1"  #TODO find a way to automate this
+    save_data["version"] = VERSION
     save_data["passwords"] = encrypted_passwords
     save_data["nonce"] = base64.b64encode(nonce).decode()
 
@@ -273,8 +277,7 @@ def authentification() -> bool:
     return False
 
 
-def cli_entry_point(): #just the basic test function for now
-    #TODO think of more useful help messages
+def cli_entry_point(): 
 
     parser = argparse.ArgumentParser() #argparse setup
     subparsers = parser.add_subparsers(dest = "command")
@@ -338,6 +341,9 @@ def cli_entry_point(): #just the basic test function for now
                 set_file_name(args.name)
             elif args.command == "iterations":
                 set_iterations_power(args.power)
+            elif args.command == "cleanup":
+                cleanup()
+                break
             else:
                 parser.print_help() #print help, in case they have no idea what they are doing (like me)
 
@@ -354,6 +360,10 @@ def timeout():
     overtime = True
 
 
+def delete_file(path: str):
+    if not os.path.exists(path):
+        return
+    os.remove(path)
 
 def write_data_to_file(data, directory_path: str, file_name: str):
     os.makedirs(directory_path, exist_ok = True)
@@ -402,6 +412,7 @@ def add_commands(subparsers):
     parser_set_iteration_power = subparsers.add_parser("iterations", help = "Set the power of 2 used as iterations when generating key")
     parser_set_iteration_power.add_argument("power", help = "The power itself (only a full, positive number)")
 
+    parser_cleanup = subparsers.add_parser("cleanup", help = "Deletes all of PVs files")
 
 
 def is_older_version(older: str, than: str) -> bool:

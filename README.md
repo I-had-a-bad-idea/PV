@@ -9,6 +9,23 @@
 ![Repo Size](https://img.shields.io/github/repo-size/I-had-a-bad-idea/PV)
 ![Contributors](https://img.shields.io/github/contributors/I-had-a-bad-idea/PV)
 
+## Overview
+
+- [WHAT IS PV?](#what-is-pv)
+- [Why Would You Use This?](#why-would-you-use-this)
+- [Features](#features)
+- [Requirements](#requirements)
+- [Installation](#installation)
+- [Usage](#usage)
+- [Quick Start](#quick-start)
+- [Where are my secrets?](#where-are-my-secrets)
+- [Can I change my master key?](#can-i-change-my-master-key)
+- [Uninstallation/Cleanup](#uninstallationcleanup)
+- [FAQ](#faq)
+- [CONTRIBUTING](#contributing)
+- [License](#license)
+- [Disclaimer](#disclaimer)
+- [Contact](#contact)
 
 ## WHAT IS PV?
 

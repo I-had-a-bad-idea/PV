@@ -1,0 +1,3 @@
+mysupersecretkey
+
+Yes this is the example data from the README

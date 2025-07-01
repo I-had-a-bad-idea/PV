@@ -1,11 +1,11 @@
 import setuptools
 from distutils.core import setup
-
+from PV.project import VERSION
 
 setup(
     name = "PV",
     description = "A horrible password vault",
-    version = "1.2.1",
+    version = VERSION,
     author = "I-had-a-bad-idea",
     packages = ["pv"],
     entry_points = {
