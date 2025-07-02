@@ -188,7 +188,7 @@ Enter new master key: old_key  # The new_key and old_master_key are supposed to 
 
 ## Uninstallation/Cleanup
 
-Simply delete the `C:\ProgramData\PV` folder (see above), and optionally uninstall the package (pip uninstall pv). No registry keys, no hidden files (unless you made some).
+Simply call the command  cleanup  and PV will delete all files it made, and optionally uninstall the package (pip uninstall pv). No registry keys, no hidden files (unless you made some).
 
 ---
 
