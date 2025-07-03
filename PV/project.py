@@ -64,7 +64,7 @@ def print_password_names():
 
 def set_iterations_power(iteration_amount: str):
     configs["power of iterations"] = int(iteration_amount)
-    print("set number of iterations to 2 **", iteration_amount)
+    print("Set number of iterations to 2 **", iteration_amount)
 
 #creates salt and encryption key
 def derive_key() -> bytes:
@@ -105,6 +105,8 @@ def get_encrypted_passwords():
 #Wait you're reading this, why?
 #Poor soul having to look at my code, I am deeply sorry
 
+#Should I delete this joke?
+
 def get_decrypted_passwords(encrypted_passwords: str):
     global nonce
 
@@ -120,7 +122,7 @@ def get_decrypted_passwords(encrypted_passwords: str):
                 #cant be an emty one, as otherwise it sees it as a new user
 
     decrypted_passwords_string = decrypted_passwords.decode() #make it text
-    if not decrypted_passwords_string:
+    if not decrypted_passwords_string: #if there are none
         return
     decrypted_passwords = json.loads(decrypted_passwords_string) #turn it back into a dict
 
@@ -129,13 +131,13 @@ def get_decrypted_passwords(encrypted_passwords: str):
 
 def set_timeout_time(new_timeout_time: str):
     configs["timeout_time"] = int(new_timeout_time) #convert to int as waiting "600" can be difficult
-    print("Set timeout time to ", configs["timeout_time"])
+    print("Set timeout time to ", configs["timeout_time"])  #possibly something else, this is why we dont use the argument
 
 
 def set_save_path(new_save_path: str):
-    old_save_path = configs["save_directory_path"]
+    old_save_path = configs["save_directory_path"] #save the old path to be able to revert
     delete_file(configs["save_directory_path"] + configs["save_file_name"])  #delete the old file, as to not have dozens of files lying around
-    configs["save_directory_path"] = new_save_path 
+    configs["save_directory_path"] = new_save_path #set new path to try and save
     try:
         save() #try to save  
     except OSError: #if for example we need admin rights
@@ -147,17 +149,17 @@ def set_save_path(new_save_path: str):
         
 
 def set_file_name(new_file_name: str):
-    old_file_name = configs["save_file_name"]
+    old_file_name = configs["save_file_name"] #save the old name to be able to revert
     delete_file(configs["save_directory_path"] + configs["save_file_name"])   #delete the old file, as to not have dozens of files lying around
-    configs["save_file_name"] = new_file_name
+    configs["save_file_name"] = new_file_name  #set new name to try and save
     try:
         save() #try to save
     except OSError: #if unable to save, due to reasons 
-        print("unable to save with this name, returning to previous")
+        print("Unable to save with this name, returning to previous")
         configs["save_file_name"] = old_file_name #return and save with the old name
         save()
         return
-    print("successfully changed file name to ", configs["save_file_name"]) #let the user know
+    print("Successfully changed file name to ", configs["save_file_name"]) #let the user know
 
 
 def cleanup():
@@ -187,32 +189,33 @@ def save():
     encrypted_passwords = get_encrypted_passwords()
 
     save_data : dict = {}
-    save_data["version"] = VERSION
-    save_data["passwords"] = encrypted_passwords
-    save_data["nonce"] = base64.b64encode(nonce).decode()
+    save_data["version"] = VERSION   #the version of the save file, used to compare to current version
+    save_data["passwords"] = encrypted_passwords 
+    save_data["nonce"] = base64.b64encode(nonce).decode()  #have to do this because nonce is bytes
 
 
 
-    print("saves at: ", configs["save_directory_path"] + configs["save_file_name"])
-    write_data_to_file(save_data, configs["save_directory_path"], configs["save_file_name"])
+    print("Saves at: ", configs["save_directory_path"] + configs["save_file_name"])  #let them know where it was saved
+    write_data_to_file(save_data, configs["save_directory_path"], configs["save_file_name"]) #actually save
 
-    save_configs()
+    save_configs() #save configs because maybe they changed
 
-    print("Saved")
+    print("Saved") #tell them the saving is completed
 
 
 def load_configs():
     global configs
 
-    configs_in_file = read_data_from_file(configs_save_path + configs_file_name)
+    configs_in_file = read_data_from_file(configs_save_path + configs_file_name) #laod the configs from the file
 
-    if not configs_in_file:
+    if not configs_in_file: #if no configs were saved we use the standard ones
         return
     
-    configs = json.loads(configs_in_file)
+    configs = json.loads(configs_in_file) #set the configs
 
-    configs["salt"] = base64.b64decode(configs["salt"])
-    configs["nonce"] = base64.b64decode(configs["nonce"])
+    configs["salt"] = base64.b64decode(configs["salt"]) #salt is bytes, we need to make it back into bytes from str
+    configs["nonce"] = base64.b64decode(configs["nonce"]) #same as salt
+
 
     ## here are configs, that were added later and have to be checked when loading
 
@@ -223,8 +226,8 @@ def load_configs():
 def save_configs():
     global configs
 
-    configs["salt"] = base64.b64encode(configs["salt"]).decode()
-    configs["nonce"] = base64.b64encode(configs["nonce"]).decode()
+    configs["salt"] = base64.b64encode(configs["salt"]).decode()  #salt is bytes and has to be converted to str to save
+    configs["nonce"] = base64.b64encode(configs["nonce"]).decode() #same as salt
 
     write_data_to_file(configs, configs_save_path, configs_file_name)
 
@@ -235,27 +238,27 @@ def authentification() -> bool:
     global passwords
     global nonce
 
-    load_configs()
+    load_configs() #first load configs to have correct path, salt, iterations, etc.
 
 
-    if not os.path.exists(configs["save_directory_path"] + configs["save_file_name"]):
+    if not os.path.exists(configs["save_directory_path"] + configs["save_file_name"]): #if the save file is not there
         print("You do not have any passwords yet. Please think of a master key to use for PV")
         master_key = getpass.getpass("Enter the master key you want to use: ")
 
-        return True
+        return True 
     
-    print("Passwords found. Please enter your master key to use PV.")
+    print("Passwords found. Please enter your master key to use PV.") #we did find a file here
     master_key = getpass.getpass("Enter your master key: ")
     
-    print("loads from: ", configs["save_directory_path"] + configs["save_file_name"]) 
-    loaded_data = read_data_from_file(configs["save_directory_path"] + configs["save_file_name"])
+    print("Loads from: ", configs["save_directory_path"] + configs["save_file_name"]) #let them know from where the passwords are loaded
+    loaded_data = read_data_from_file(configs["save_directory_path"] + configs["save_file_name"]) #load passwords
 
     try:
-        loaded_data = json.loads(loaded_data)
+        loaded_data = json.loads(loaded_data) 
         loaded_passwords = loaded_data["passwords"]
-        nonce = base64.b64decode(loaded_data["nonce"])
+        nonce = base64.b64decode(loaded_data["nonce"])  #nonce is bytes and has to be converted to bytes from str
     
-    except TypeError:   #if they dont have a version newer than the one versions were added
+    except TypeError:   #if they dont have a version newer than the one where versions were added
         loaded_passwords = loaded_data
         nonce = configs["nonce"]
 
