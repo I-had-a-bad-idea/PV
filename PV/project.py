@@ -31,7 +31,7 @@ configs : dict = {
 
 nonce : bytes
 
-VERSION : str = "1.2.2"
+VERSION : str = "1.3.0"
 
 configs_save_path : str = "C:\\ProgramData\\PV\\"  #not inside configs, as it should not change (otherwise we wont find it)
 configs_file_name : str = "PV_configs"

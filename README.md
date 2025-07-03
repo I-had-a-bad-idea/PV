@@ -110,6 +110,7 @@ exit        # Save and exit PV (but why would you want to do that?)
 # ...and other mysterious commands
 ```
 
+> For a description of all command look at the [Documentation](Documentation.md)
 > Run any non-existent command for full CLI wizardry. Or just to see what happens.
 
 ---
