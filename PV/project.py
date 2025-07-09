@@ -31,7 +31,7 @@ configs : dict = {
 
 nonce : bytes
 
-VERSION : str = "1.3.0"
+VERSION : str = "1.3.1"
 
 configs_save_path : str = "C:\\ProgramData\\PV\\"  #not inside configs, as it should not change (otherwise we wont find it)
 configs_file_name : str = "PV_configs"
@@ -185,15 +185,30 @@ def get_password(password_name: str, _print: bool):
         print("Copied ", password_name, " to clipboard")
 
 
-def save():
-    encrypted_passwords = get_encrypted_passwords()
-
+def get_save_dict() -> dict:
     save_data : dict = {}
-    save_data["version"] = VERSION   #the version of the save file, used to compare to current version
-    save_data["passwords"] = encrypted_passwords 
-    save_data["nonce"] = base64.b64encode(nonce).decode()  #have to do this because nonce is bytes
+
+    save_data["version"] = VERSION       #the version of the save file, used to compare to current version
+    save_data["passwords"] = get_encrypted_passwords()
+    save_data["nonce"] = base64.b64encode(nonce).decode()     #have to do this because nonce is bytes
+
+    return save_data
+
+def get_configs_save_dict() -> dict:
+    configs_save : dict = {}
+
+    configs_save = configs
 
 
+    #TODO think about removing this. Maybe leave it as this allows backward compatibility
+    configs_save["salt"] = base64.b64encode(configs["salt"]).decode()  #salt is bytes and has to be converted to str to save
+    configs_save["nonce"] = base64.b64encode(configs["nonce"]).decode() #same as salt
+
+    return configs_save
+
+def save():
+
+    save_data : dict = get_save_dict()
 
     print("Saves at: ", configs["save_directory_path"] + configs["save_file_name"])  #let them know where it was saved
     write_data_to_file(save_data, configs["save_directory_path"], configs["save_file_name"]) #actually save
@@ -226,11 +241,17 @@ def load_configs():
 def save_configs():
     global configs
 
-    configs["salt"] = base64.b64encode(configs["salt"]).decode()  #salt is bytes and has to be converted to str to save
-    configs["nonce"] = base64.b64encode(configs["nonce"]).decode() #same as salt
+    write_data_to_file(get_configs_save_dict(), configs_save_path, configs_file_name)
 
-    write_data_to_file(configs, configs_save_path, configs_file_name)
 
+#TODO add the import and then make commands for them
+def export(directory_path: str, file_name: str):
+    save_data : dict = get_save_dict()
+
+    save_data["configs"] = get_configs_save_dict()
+
+    write_data_to_file(save_data, directory_path, file_name)
+    print("Exported to ", directory_path + file_name)
 
 #returns true if correct master key
 def authentification() -> bool:
@@ -304,26 +325,28 @@ def cli_entry_point():
     t.start()
 
     while True: #just loop
-        if overtime:
-            print("inactive for too long")
-            save()   #only breaks after an input, as input() blocks thread, but that is no problem as you are unable to do anything 
-            break
         try:
             line = input("PV>\t") 
         except EOFError:
             break 
         if not line.strip():
             continue
-        if line.strip() in ("exit", "quit"):
+        if line.strip().lower() in ["exit", "quit"]:
             print("Exiting PV") 
             save() #when exiting, save (only time they are being saved as of now)
             break
         
         try:
+            if overtime:
+                print("Inactive for too long")  #FIXME It would probably still be best to find a way to get around input() blocking the thread
+                save()  #only breaks after an input, as input() blocks thread, but that is no problem as the input is not executed 
+                break
 
             t.cancel()
             args = parser.parse_args(line.split()) #get the arguments
             #the commands themselves
+            args.command = args.command.lower()  #convert the command to lower case to not care about capital letters
+
             if args.command == "add":
                  add_password(args.password_name, args.password)
             elif args.command == "remove":
@@ -348,14 +371,15 @@ def cli_entry_point():
                 cleanup()
                 break
             else:
-                parser.print_help() #print help, in case they have no idea what they are doing (like me)
+                parser.print_help() #print help, in case they have no idea what they are doing    like me :) 
 
-            t = Timer(configs["timeout_time"], timeout) #after commands, in case the timeput_time got changed
+            t = Timer(configs["timeout_time"], timeout) #after commands, in case the timeout_time got changed
             t.start()
         except SystemExit:
             continue
     t.cancel()
 
+   
 
 #for overtime. Connected to timer t in cli_entry_point()
 def timeout():
@@ -389,7 +413,7 @@ def read_data_from_file(path_to_file: str) -> str:
 def add_commands(subparsers):
 
     parser_add_password = subparsers.add_parser("add", help = "Add a new password")
-    parser_add_password.add_argument("password_name", help = "The name of the password")
+    parser_add_password.add_argument("password_name", help = "The name of the password, which will be used for all commands")
     parser_add_password.add_argument("password", help = "The password itself")
 
     parser_remove_password = subparsers.add_parser("remove", help = "Remove a password")
@@ -401,7 +425,7 @@ def add_commands(subparsers):
 
     parser_get_password = subparsers.add_parser("password", help = "Get a password")
     parser_get_password.add_argument("password_name", help = "The name of the password")
-    parser_get_password.add_argument("--print", action = "store_true", help = "Print password insteead of copying it to clipboard")
+    parser_get_password.add_argument("--print", action = "store_true", help = "Print the password insteead of copying it to the clipboard")
 
     parser_set_timeout_time = subparsers.add_parser("timeout", help = "Set new timeout time")
     parser_set_timeout_time.add_argument("time", help = "The new timeout time")
@@ -415,7 +439,7 @@ def add_commands(subparsers):
     parser_set_iteration_power = subparsers.add_parser("iterations", help = "Set the power of 2 used as iterations when generating key")
     parser_set_iteration_power.add_argument("power", help = "The power itself (only a full, positive number)")
 
-    parser_cleanup = subparsers.add_parser("cleanup", help = "Deletes all of PVs files")
+    parser_cleanup = subparsers.add_parser("cleanup", help = "Deletes all files made by PV")
 
 
 def is_older_version(older: str, than: str) -> bool:

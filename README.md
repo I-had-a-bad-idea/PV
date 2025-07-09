@@ -167,7 +167,7 @@ Saved
 
 ## Where are my secrets?
 
-PV stores your (encrypted!) passwords in a file called `PV_passwords` in `C:\ProgramData\PV`. At least, unless you change the file location. Then that new location gets saved in the `PV_configs` file. Unless you move/delete that (in which case, I hope you remember where you put it). If you want to delete all your secrets, delete the PV folder. If you want to move it to a USB stick and throw it in a volcano, go wild.
+PV stores your (encrypted!) passwords in a file called `PV_passwords` in `C:\ProgramData\PV`. At least, unless you change the file location. Then that new location gets saved in the `PV_configs` file. Unless you move/delete that (in which case, I hope you remember where you put it). If you want to delete all your secrets, look at [cleanup](#uninstallation/cleanup). If you want to move it to a USB stick and throw it in a volcano, go wild.
 
 ---
 
@@ -175,21 +175,13 @@ PV stores your (encrypted!) passwords in a file called `PV_passwords` in `C:\Pro
 
 You can change your master key at any time. But remember: with great power comes great responsibility (to not forget your new master key).
 
-```bash
-pv authenticate # if you are no longer authenticated
-Enter master_key: old_master_key 
+[How to change your master key](Documentation.md/#new_master_key)
 
-PV> new_master_key  
-Enter old master key: new_key  # Don't worry, your passwords are still hiding
-Enter new master key: old_key  # The new_key and old_master_key are supposed to be your keys, not your cat's birthday
-
-
-```
 ---
 
 ## Uninstallation/Cleanup
 
-Simply call the command  cleanup  and PV will delete all files it made, and optionally uninstall the package (pip uninstall pv). No registry keys, no hidden files (unless you made some).
+Simply call the [cleanup](Documentation.md/#cleanup) command and PV will delete all files it made, and optionally uninstall the package (pip uninstall pv). No registry keys, no hidden files (unless you made some).
 
 ---
 
