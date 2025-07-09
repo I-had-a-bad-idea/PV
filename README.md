@@ -51,6 +51,7 @@ PV is a CLI for managing your passwords, because sticky notes are only secure if
 
 - **AES-GCM Encryption!** No one knows how strong, but it’s there.
 - **Master Key**: The one password to encrypt them all (and the one you really shouldn’t forget).
+- **Key Derivation**: Makes your weak master key into a strong key for encryption.
 - **Add/Remove/List passwords** (the holy trinity of password management)
 - **CLI interface:** For people who fear GUIs, or just like typing.
 - **No Cloud**: If you want your passwords stolen, you’ll have to do it yourself.
