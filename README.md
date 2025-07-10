@@ -124,11 +124,19 @@ exit        # Save and exit PV (but why would you want to do that?)
 # Install (see above)
 pv
 
+================================
+ Welcome to PV
+-----------------------
+ Simple. Local. Secure.
+-----------------------
+ github.com/I-had-a-bad-idea/PV
+================================
+
+
 You do not have any passwords yet. Please think of a master key to use for PV
 Enter the master key you want to use:   mysupersecretkey    # Key will be hidden. No peeking.
 
 Successfully authenticated!
-Welcome to PV
 
 PV>     add github 123456
 added  github
@@ -170,7 +178,7 @@ Saved
 
 ## Where are my secrets?
 
-PV stores your (encrypted!) passwords in a file called `PV_passwords` in `C:\ProgramData\PV`. At least, unless you change the file location. Then that new location gets saved in the `PV_configs` file. Unless you move/delete that (in which case, I hope you remember where you put it). If you want to delete all your secrets, look at [cleanup](#uninstallation/cleanup). If you want to move it to a USB stick and throw it in a volcano, go wild.
+PV stores your (encrypted!) passwords in a file called `PV_passwords` in `C:\ProgramData\PV`. At least, unless you change the file location. Then that new location gets saved in the `PV_configs` file. Unless you move/delete that (in which case, I hope you remember where you put it). If you want to delete all your secrets, look at [cleanup](#uninstallationcleanup). If you want to move it to a USB stick and throw it in a volcano, go wild.
 
 ---
 
