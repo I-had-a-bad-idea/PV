@@ -51,7 +51,7 @@ PV is a CLI for managing your passwords, because sticky notes are only secure if
 
 - **AES-GCM Encryption!** No one knows how strong, but it’s there.
 - **Master Key**: The one password to encrypt them all (and the one you really shouldn’t forget).
-- **Key Derivation**: Makes your weak master key into a strong key for encryption.
+- **Key Derivation**: Turns your weak master key into a strong key for encryption.
 - **Add/Remove/List passwords** (the holy trinity of password management)
 - **CLI interface:** For people who fear GUIs, or just like typing.
 - **No Cloud**: If you want your passwords stolen, you’ll have to do it yourself.
@@ -106,10 +106,12 @@ passwords       # List all your secrets (only the names)
 password        # Get a password by its name
 remove     # Remove a password (bye-bye)
 exit        # Save and exit PV (but why would you want to do that?)
-#please always exit with the command and dont just close the terminal or your changes will be lost
+
 
 # ...and other mysterious commands
 ```
+> **Important:** Always exit with the command and dont just close the terminal or your changes will be lost
+
 
 > For a description of all command look at the [Documentation](Documentation.md)
 

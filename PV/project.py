@@ -69,7 +69,7 @@ def set_iterations_power(iteration_amount: str):
 #creates salt and encryption key
 def derive_key() -> bytes:
     if not configs["salt"]:
-        configs["salt"] = os.urandom(32)
+        configs["salt"] = os.urandom(32)  #make random salt if not already there
 
     kdf = Scrypt(
         salt = configs["salt"],
@@ -84,16 +84,16 @@ def derive_key() -> bytes:
 def get_encrypted_passwords():
     global nonce
 
-    passwords_string = json.dumps(passwords) #turn the dict into a str
-    passwords_string_as_bytes = passwords_string.encode() #turn the str into bytes
-    master_key_as_bytes = derive_key() #get key
+    passwords_string : str = json.dumps(passwords) #turn the dict into a str
+    passwords_string_as_bytes : bytes = passwords_string.encode() #turn the str into bytes
+    master_key_as_bytes : bytes = derive_key() #get key
 
-    aesgcm = AESGCM(master_key_as_bytes) #create AESGCM with key
+    aesgcm : AESGCM = AESGCM(master_key_as_bytes) #create AESGCM with key
     
     nonce = os.urandom(32) #create new nonce every session
     
-    encrypted_passwords = aesgcm.encrypt(nonce, passwords_string_as_bytes, None) #encrypt passwords
-    encrypted_passwords_as_base64 = base64.b64encode(encrypted_passwords).decode() #convert them to make them safe for storing
+    encrypted_passwords : bytes = aesgcm.encrypt(nonce, passwords_string_as_bytes, None) #encrypt passwords
+    encrypted_passwords_as_base64 : str = base64.b64encode(encrypted_passwords).decode() #convert them to make them safe for storing
 
     return encrypted_passwords_as_base64
 
@@ -110,10 +110,10 @@ def get_encrypted_passwords():
 def get_decrypted_passwords(encrypted_passwords: str):
     global nonce
 
-    master_key_deriviate = derive_key() #get key
-    encrypted_passwords_as_bytes = base64.b64decode(encrypted_passwords) #convert them into something you can work with
+    master_key_deriviate : bytes = derive_key() #get key
+    encrypted_passwords_as_bytes : bytes = base64.b64decode(encrypted_passwords) #convert them into something you can work with
 
-    aesgcm = AESGCM(master_key_deriviate) 
+    aesgcm : AESGCM = AESGCM(master_key_deriviate) 
 
     try:
         decrypted_passwords = aesgcm.decrypt(nonce, encrypted_passwords_as_bytes, None) #decrypt passwords
@@ -121,7 +121,7 @@ def get_decrypted_passwords(encrypted_passwords: str):
         return {"wrong": "master_key"} #just return some dict, where there isnt the master_key, as that is being checked later
                 #cant be an emty one, as otherwise it sees it as a new user
 
-    decrypted_passwords_string = decrypted_passwords.decode() #make it text
+    decrypted_passwords_string : str = decrypted_passwords.decode() #make it text
     if not decrypted_passwords_string: #if there are none
         return
     decrypted_passwords = json.loads(decrypted_passwords_string) #turn it back into a dict
@@ -163,8 +163,8 @@ def set_file_name(new_file_name: str):
 
 
 def cleanup():
-    delete_file(configs["save_directory_path"] + configs["save_file_name"])
-    delete_file(configs_save_path + configs_file_name)
+    delete_file(configs["save_directory_path"] + configs["save_file_name"]) #delete passwords
+    delete_file(configs_save_path + configs_file_name)  #delete configs
 
     print("Deleted all files made by PV")
     print("Thank you for using PV")
@@ -175,7 +175,7 @@ def get_password_(password_name: str):
         return passwords[password_name] #just gets the password for the given name
     return "" #if password doesnt exist returns nothing 
 
-
+#the actual function you are looking for
 def get_password(password_name: str, _print: bool):
     pyperclip.copy(get_password_(password_name)) #copies, what it gets, could be "" (nothing)
     if _print:
@@ -198,7 +198,6 @@ def get_configs_save_dict() -> dict:
     configs_save : dict = {}
 
     configs_save = configs
-
 
     #TODO think about removing this. Maybe leave it as this allows backward compatibility
     configs_save["salt"] = base64.b64encode(configs["salt"]).decode()  #salt is bytes and has to be converted to str to save
@@ -237,7 +236,7 @@ def load_configs():
     if not "power of iterations" in configs:
         configs["power of iterations"] = 18
 
-
+#TODO maybe just remove this function, as it turned into a one-liner
 def save_configs():
     global configs
 
@@ -302,6 +301,17 @@ def authentification() -> bool:
 
 
 def cli_entry_point(): 
+    welcome : str = r"""
+================================
+ Welcome to PV
+-----------------------
+ Simple. Local. Secure.
+-----------------------
+ github.com/I-had-a-bad-idea/PV
+================================
+"""    
+
+    print(welcome)
 
     parser = argparse.ArgumentParser() #argparse setup
     subparsers = parser.add_subparsers(dest = "command")
@@ -314,7 +324,6 @@ def cli_entry_point():
     add_password(master_key, master_key) #add the master key password used for authentication (look above)
     
     print("Successfully authenticated!")
-    print("Welcome to PV")
 
 
     #add all the commands
@@ -338,7 +347,7 @@ def cli_entry_point():
         
         try:
             if overtime:
-                print("Inactive for too long")  #FIXME It would probably still be best to find a way to get around input() blocking the thread
+                print("Inactive for too long")  #TODO It would probably still be best to find a way to get around input() blocking the thread
                 save()  #only breaks after an input, as input() blocks thread, but that is no problem as the input is not executed 
                 break
 
