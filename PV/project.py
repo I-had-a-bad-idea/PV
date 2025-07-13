@@ -31,7 +31,7 @@ configs : dict = {
 
 nonce : bytes
 
-VERSION : str = "1.3.2"
+VERSION : str = "1.4.0"
 
 configs_save_path : str = "C:\\ProgramData\\PV\\"  #not inside configs, as it should not change (otherwise we wont find it)
 configs_file_name : str = "PV_configs"
@@ -201,7 +201,7 @@ def get_configs_save_dict() -> dict:
 
     #TODO think about removing this. Maybe leave it as this allows backward compatibility
     configs_save["salt"] = base64.b64encode(configs["salt"]).decode()  #salt is bytes and has to be converted to str to save
-    configs_save["nonce"] = base64.b64encode(configs["nonce"]).decode() #same as salt
+    configs_save["nonce"] = base64.b64encode(nonce).decode() #same as salt
 
     return configs_save
 
@@ -251,6 +251,41 @@ def export(directory_path: str, file_name: str):
 
     write_data_to_file(save_data, directory_path, file_name)
     print("Exported to ", directory_path + file_name)
+
+def import_(path: str):
+    global configs
+    global passwords
+    global nonce
+
+    if not os.path.exists(path):
+        print("File does not exist")
+        return
+    print("Imports from: ", path)
+    loaded_data = read_data_from_file(path) #load the data from the file
+    if not loaded_data: #if the file was empty
+        print("File is empty")
+        return
+    try:
+        loaded_data = json.loads(loaded_data) #load the data as json
+        loaded_passwords = loaded_data["passwords"]
+        nonce = base64.b64decode(loaded_data["nonce"])  #nonce is bytes and has to be converted to bytes from str
+        configs = loaded_data["configs"]  #configs are saved in the file, so we
+        configs["salt"] = base64.b64decode(configs["salt"])  #salt is bytes, we need to make it back into bytes from str
+    except TypeError:
+        print("Not a valid file")
+        return
+    decrypted_passwords = get_decrypted_passwords(loaded_passwords)
+
+    if not decrypted_passwords: #if the enrcypted passwordsare empty
+        print("No passwords in file")
+        return
+
+    if master_key in passwords:
+        if passwords[master_key] == master_key: #if the master_key is in the dictionary
+            passwords = decrypted_passwords
+    
+    print("Import successful")
+    
 
 #returns true if correct master key
 def authentification() -> bool:
@@ -376,6 +411,10 @@ def cli_entry_point():
                 set_file_name(args.name)
             elif args.command == "iterations":
                 set_iterations_power(args.power)
+            elif args.command == "export":
+                export(args.directory_path, args.file_name)
+            elif args.command == "import":
+                import_(args.path)
             elif args.command == "cleanup":
                 cleanup()
                 break
@@ -449,6 +488,13 @@ def add_commands(subparsers):
     parser_set_iteration_power.add_argument("power", help = "The power itself (only a full, positive number)")
 
     parser_cleanup = subparsers.add_parser("cleanup", help = "Deletes all files made by PV")
+
+    parser_export = subparsers.add_parser("export", help = "Exports the passwords and configs to a file")
+    parser_export.add_argument("directory_path", help = "The path to the directory where the export file should be saved")
+    parser_export.add_argument("file_name", help = "The name of the export file")
+
+    parser_import = subparsers.add_parser("import", help = "Imports passwords and configs from a file") 
+    parser_import.add_argument("path", help = "The path to the file to import from")
 
 
 def is_older_version(older: str, than: str) -> bool:
