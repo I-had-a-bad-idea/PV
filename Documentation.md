@@ -10,6 +10,8 @@
 - [Cleaning up](#cleanup)
 - [Configuring the save directory](#savepath)
 - [Choosing a name for the file](#filename)
+- [Exporting data](#export)
+- [Importing data](#import)
 
 ---
 
@@ -161,3 +163,33 @@ iterations 18
 
 18 is the standard. It is recommended to increase this number as much as possible, without increasing load/save times too much. Beware that this number is used as the power of 2. Therefore a bigger increase can seriously increase times.
 
+
+## Export
+This command exports all your data to one file. The passwords are still encrypted.
+In combination with [import](#import) it can be used to easily get your passwords from one device to another.
+It requires two arguments: directory_path ; file_name
+
+Example:
+
+```bash
+
+export E:/ Export
+
+```
+
+This will export your data to E:/Export
+
+## Import
+This command imports your data from a file previously created with [export](#export).
+It requires one argument: path
+
+Example:
+
+```bash
+
+import E:/Export
+
+```
+This will import the previously exported data.
+
+>**Warning**: This will overwrite your current data!

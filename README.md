@@ -20,6 +20,7 @@
 - [Quick Start](#quick-start)
 - [Where are my secrets?](#where-are-my-secrets)
 - [Can I change my master key?](#can-i-change-my-master-key)
+- [Transfering data to a different device](#transfering-data-to-a-different-device)
 - [Uninstallation/Cleanup](#uninstallationcleanup)
 - [FAQ](#faq)
 - [CONTRIBUTING](#contributing)
@@ -189,6 +190,10 @@ You can change your master key at any time. But remember: with great power comes
 [How to change your master key](Documentation.md/#new_master_key)
 
 ---
+
+## Transfering data to a different device
+
+You can use the [export](Documentation.md/#export) command and then the [import](Documentation.md/#import) command to transfer your data to another device.
 
 ## Uninstallation/Cleanup
 
