@@ -1,4 +1,3 @@
-
 import argparse
 import json
 import os
@@ -29,9 +28,11 @@ configs : dict = {
 
 }
 
-nonce : bytes
+nonce : bytes #number used once, used once for encryption, so it is not the same every time, which would make it easy to decrypt
 
-VERSION : str = "1.4.0"
+VERSION : str = "1.4.1" #used to check what the file version is, so we dont try to load things that are not there
+
+#oh look a version
 
 configs_save_path : str = "C:\\ProgramData\\PV\\"  #not inside configs, as it should not change (otherwise we wont find it)
 configs_file_name : str = "PV_configs"
@@ -98,14 +99,16 @@ def get_encrypted_passwords():
     return encrypted_passwords_as_base64
 
 
-#I have no clue, if this is secure
+#I have no clue, if this is secure 
 #I mean its a good encryption thingy
-#Who cares. I warned them if its not
+#Who cares. I warned them if its not    #yeah, but that doesnt make it any better
 #...
 #Wait you're reading this, why?
 #Poor soul having to look at my code, I am deeply sorry
 
 #Should I delete this joke?
+#Well, I am too lazy to do it now, so I will just leave it here
+
 
 def get_decrypted_passwords(encrypted_passwords: str):
     global nonce
@@ -199,7 +202,7 @@ def get_configs_save_dict() -> dict:
 
     configs_save = configs
 
-    #TODO think about removing this. Maybe leave it as this allows backward compatibility
+    #TODO think about removing this. Only usecase is backwards compatibility
     configs_save["salt"] = base64.b64encode(configs["salt"]).decode()  #salt is bytes and has to be converted to str to save
     configs_save["nonce"] = base64.b64encode(nonce).decode() #same as salt
 
@@ -243,11 +246,10 @@ def save_configs():
     write_data_to_file(get_configs_save_dict(), configs_save_path, configs_file_name)
 
 
-#TODO add the import and then make commands for them
 def export(directory_path: str, file_name: str):
-    save_data : dict = get_save_dict()
+    save_data : dict = get_save_dict() #gets the passwords, nonce, version, etc.
 
-    save_data["configs"] = get_configs_save_dict()
+    save_data["configs"] = get_configs_save_dict()  #adds the configs to the save data, so they can be imported later
 
     write_data_to_file(save_data, directory_path, file_name)
     print("Exported to ", directory_path + file_name)
@@ -261,8 +263,10 @@ def import_(path: str):
     if not os.path.exists(path):
         print("File does not exist")
         return
+    
     print("Imports from: ", path)
     loaded_data = read_data_from_file(path) #load the data from the file
+    
     if not loaded_data: #if the file was empty
         print("File is empty")
         return
@@ -408,6 +412,9 @@ def cli_entry_point():
                  remove_password(args.password_name)
             elif args.command == "new_master_key":
                 old_master_key = getpass.getpass("Enter old master key: ")
+                if old_master_key != master_key:  #check if the old master key is correct
+                    print("Old master key is wrong")
+                    continue
                 new_master_key = getpass.getpass("Enter new master key: ")
                 set_master_key(new_master_key, old_master_key)
             elif args.command == "passwords":

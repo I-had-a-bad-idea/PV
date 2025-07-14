@@ -195,6 +195,8 @@ You can change your master key at any time. But remember: with great power comes
 
 You can use the [export](Documentation.md/#export) command and then the [import](Documentation.md/#import) command to transfer your data to another device.
 
+---
+
 ## Uninstallation/Cleanup
 
 Simply call the [cleanup](Documentation.md/#cleanup) command and PV will delete all files it made, and optionally uninstall the package (pip uninstall pv). No registry keys, no hidden files (unless you made some).
