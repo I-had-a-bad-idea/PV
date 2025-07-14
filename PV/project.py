@@ -256,6 +256,7 @@ def import_(path: str):
     global configs
     global passwords
     global nonce
+    global master_key
 
     if not os.path.exists(path):
         print("File does not exist")
@@ -274,15 +275,25 @@ def import_(path: str):
     except TypeError:
         print("Not a valid file")
         return
+    
+    old_master_key = master_key  #save the old master key to be able to revert it, if the import fails
+    master_key = getpass.getpass("Enter master key for imported passwords: ")   #ask for the master key to be able to decrypt the passwords
+    
     decrypted_passwords = get_decrypted_passwords(loaded_passwords)
 
     if not decrypted_passwords: #if the enrcypted passwordsare empty
         print("No passwords in file")
         return
 
-    if master_key in passwords:
-        if passwords[master_key] == master_key: #if the master_key is in the dictionary
-            passwords = decrypted_passwords
+    if not master_key in decrypted_passwords:
+        print("Wrong master key")
+        master_key = old_master_key  #revert to old master key, as the new given was wrong
+        return
+    if not decrypted_passwords[master_key] == master_key: #if the master_key is in the dictionary
+        print("Wrong master key")
+        master_key = old_master_key
+        return
+    passwords = decrypted_passwords
     
     print("Import successful")
     

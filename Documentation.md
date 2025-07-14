@@ -182,12 +182,14 @@ This will export your data to E:/Export
 ## Import
 This command imports your data from a file previously created with [export](#export).
 It requires one argument: path
+It will then promt you for the master key you used when exporting the file.
 
 Example:
 
 ```bash
 
 import E:/Export
+Enter master key for imported passwords: mysupersecretkey  #will be hidden
 
 ```
 This will import the previously exported data.
