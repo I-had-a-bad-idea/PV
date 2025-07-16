@@ -16,9 +16,6 @@ passwords : dict = {} #Just a dictionary, where the passwords are saved
 
 master_key : str #The one key to encrypt them all
 
-
-overtime : bool = False
-
 configs : dict = {
     "save_directory_path": "C:\\ProgramData\\PV\\",  #The directory for the password file
     "save_file_name": "PV_passwords",  #The name of the password file
@@ -396,11 +393,6 @@ def cli_entry_point():
             break
         
         try:
-            if overtime:
-                print("Inactive for too long")  #TODO It would probably still be best to find a way to get around input() blocking the thread
-                save()  #only breaks after an input, as input() blocks thread, but that is no problem as the input is not executed 
-                break
-
             t.cancel()
             args = parser.parse_args(line.split()) #get the arguments
             #the commands themselves
@@ -449,8 +441,9 @@ def cli_entry_point():
 
 #for overtime. Connected to timer t in cli_entry_point()
 def timeout():
-    global overtime
-    overtime = True
+    print("\nTimeout reached, exiting PV")
+    save()  #save before exiting, so they dont lose their passwords
+    os._exit(0)  #exit the programm
 
 
 def delete_file(path: str):
